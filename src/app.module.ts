@@ -30,6 +30,14 @@ const envSchema = z.object({
     .default(
       'http://localhost:5173',
     ),
+
+  GEMINI_API_KEY: z
+    .string()
+    .min(1),
+
+  GEMINI_MODEL: z
+    .string()
+    .default('gemini-3.1-flash-lite'),
 });
 
 @Module({
