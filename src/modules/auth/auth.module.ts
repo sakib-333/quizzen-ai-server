@@ -7,6 +7,6 @@ import { OptionalFirebaseAuthGuard } from './guards/optional-firebase-auth.guard
 @Module({
   controllers: [AuthController],
   providers: [AuthService, FirebaseAdminService, OptionalFirebaseAuthGuard],
-  exports: [FirebaseAdminService],
+  exports: [FirebaseAdminService, OptionalFirebaseAuthGuard],
 })
 export class AuthModule { }
