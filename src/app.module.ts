@@ -8,6 +8,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { QuizzesModule } from './modules/quizzes/quizzes.module';
 import { HistoryModule } from './modules/history/history.module';
 import { PdfModule } from './modules/pdf/pdf.module';
+import { ConvexModule } from './database/convex/convex.module';
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -38,6 +39,18 @@ const envSchema = z.object({
   GEMINI_MODEL: z
     .string()
     .default('gemini-3.1-flash-lite'),
+
+  CONVEX_URL: z
+    .string()
+    .min(1),
+
+  CONVEX_DEPLOYMENT: z
+    .string()
+    .min(1),
+  
+    CONVEX_SITE_URL: z
+    .string()
+    .min(1),
 });
 
 @Module({
@@ -47,6 +60,7 @@ const envSchema = z.object({
       cache: true,
       validationSchema: envSchema,
     }),
+    ConvexModule,
     AuthModule,
     AiModule,
     QuizzesModule,

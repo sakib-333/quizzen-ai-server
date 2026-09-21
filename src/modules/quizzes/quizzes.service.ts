@@ -1,23 +1,33 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
+
 import { randomUUID } from 'crypto';
 
 import { AiService } from '../ai/ai.service';
+import { ConvexService } from '../../database/convex/convex.service';
+
 import type { GeneratedQuiz } from '../ai/schemas/quiz.schema';
 
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 
-type StoredQuiz = {
+type GuestStoredQuiz = {
     quiz: GeneratedQuiz;
     config: GenerateQuizDto;
-    ownerUid?: string;
 };
 
 @Injectable()
 export class QuizzesService {
-    private readonly quizzes = new Map<string, StoredQuiz>();
+    private readonly guestQuizzes = new Map<string, GuestStoredQuiz>();
 
-    constructor(private readonly aiService: AiService) { }
+    constructor(
+        private readonly aiService: AiService,
+        private readonly convexService: ConvexService,
+    ) { }
 
     async generate(dto: GenerateQuizDto, uid?: string) {
         const quiz = await this.aiService.generateQuiz({
@@ -28,21 +38,38 @@ export class QuizzesService {
 
         const id = randomUUID();
 
-        this.quizzes.set(id, {
-            quiz,
-            config: dto,
-            ownerUid: uid,
-        });
+        if (uid) {
+            await this.convexService.createQuiz({
+                quizId: id,
+                ownerUid: uid,
+
+                title: quiz.title,
+                prompt: dto.prompt,
+                questionCount: dto.questionCount,
+                difficulty: dto.difficulty,
+                durationMinutes: dto.durationMinutes,
+
+                questions: quiz.questions,
+
+                createdAt: Date.now(),
+            });
+        } else {
+            this.guestQuizzes.set(id, {
+                quiz,
+                config: dto,
+            });
+        }
 
         return {
             success: true,
+
             data: {
                 id,
                 title: quiz.title,
                 authenticated: Boolean(uid),
+
                 config: dto,
 
-                // Never send correct answers during an active quiz.
                 questions: quiz.questions.map((question) => ({
                     id: question.id,
                     question: question.question,
@@ -52,16 +79,43 @@ export class QuizzesService {
         };
     }
 
-    submit(id: string, dto: SubmitQuizDto, uid?: string) {
-        const stored = this.quizzes.get(id);
+    async submit(id: string, dto: SubmitQuizDto, uid?: string) {
+        let quiz: GeneratedQuiz;
+        let config: GenerateQuizDto;
+        let ownerUid: string | undefined;
 
-        if (!stored) throw new NotFoundException('Quiz not found.');
+        const guestQuiz = this.guestQuizzes.get(id);
 
-        if (stored.ownerUid && stored.ownerUid !== uid) {
-            throw new ForbiddenException('You do not have access to this quiz.');
+        if (guestQuiz) {
+            quiz = guestQuiz.quiz;
+            config = guestQuiz.config;
+        } else {
+            const storedQuiz = await this.convexService.getQuiz(id);
+
+            if (!storedQuiz) {
+                throw new NotFoundException('Quiz not found.');
+            }
+
+            if (!uid || storedQuiz.ownerUid !== uid) {
+                throw new ForbiddenException('You do not have access to this quiz.');
+            }
+
+            ownerUid = storedQuiz.ownerUid;
+
+            quiz = {
+                title: storedQuiz.title,
+                questions: storedQuiz.questions,
+            };
+
+            config = {
+                prompt: storedQuiz.prompt,
+                questionCount: storedQuiz.questionCount,
+                difficulty: storedQuiz.difficulty,
+                durationMinutes: storedQuiz.durationMinutes,
+            };
         }
 
-        const validQuestionIds = new Set(stored.quiz.questions.map((question) => question.id));
+        const validQuestionIds = new Set(quiz.questions.map((question) => question.id));
 
         const answerMap = new Map<string, 'A' | 'B' | 'C' | 'D'>();
 
@@ -71,7 +125,7 @@ export class QuizzesService {
             }
 
             if (answerMap.has(answer.questionId)) {
-                throw new BadRequestException(`Duplicate answer for question: ${answer.questionId}`);
+                throw new BadRequestException(`Duplicate answer: ${answer.questionId}`);
             }
 
             answerMap.set(answer.questionId, answer.optionId);
@@ -79,28 +133,55 @@ export class QuizzesService {
 
         let score = 0;
 
-        for (const question of stored.quiz.questions) {
-            const selectedOption = answerMap.get(question.id);
-
-            if (selectedOption === question.correctOptionId) score++;
+        for (const question of quiz.questions) {
+            if (answerMap.get(question.id) === question.correctOptionId) {
+                score++;
+            }
         }
 
-        const totalQuestions = stored.quiz.questions.length;
+        const totalQuestions = quiz.questions.length;
         const percentage = totalQuestions ? Math.round((score / totalQuestions) * 100) : 0;
+        const completedAt = Date.now();
+        const answers = Object.fromEntries(answerMap);
 
-        return {
-            success: true,
-            data: {
+        if (ownerUid) {
+            await this.convexService.createAttempt({
                 quizId: id,
-                title: stored.quiz.title,
-                config: stored.config,
-                questions: stored.quiz.questions,
-                answers: Object.fromEntries(answerMap),
+                ownerUid,
+
+                title: quiz.title,
+                prompt: config.prompt,
+                difficulty: config.difficulty,
+                durationMinutes: config.durationMinutes,
+                questionCount: config.questionCount,
+
+                answers,
                 score,
                 totalQuestions,
                 percentage,
+
                 timedOut: dto.timedOut ?? false,
-                completedAt: Date.now(),
+                completedAt,
+            });
+        }
+
+        return {
+            success: true,
+
+            data: {
+                quizId: id,
+                title: quiz.title,
+                config,
+
+                questions: quiz.questions,
+                answers,
+
+                score,
+                totalQuestions,
+                percentage,
+
+                timedOut: dto.timedOut ?? false,
+                completedAt,
             },
         };
     }
