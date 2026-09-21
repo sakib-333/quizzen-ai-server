@@ -1,12 +1,4 @@
-import {
-    IsIn,
-    IsInt,
-    IsString,
-    Max,
-    MaxLength,
-    Min,
-    MinLength,
-} from 'class-validator';
+import { IsIn, IsInt, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class GenerateQuizDto {
     @IsString()
@@ -19,15 +11,8 @@ export class GenerateQuizDto {
     @Max(20)
     questionCount!: number;
 
-    @IsIn([
-        'beginner',
-        'intermediate',
-        'advanced',
-    ])
-    difficulty!:
-        | 'beginner'
-        | 'intermediate'
-        | 'advanced';
+    @IsIn(['beginner', 'intermediate', 'advanced'])
+    difficulty!: 'beginner' | 'intermediate' | 'advanced';
 
     @IsInt()
     @Min(5)
