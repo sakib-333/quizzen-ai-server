@@ -19,12 +19,6 @@ async function bootstrap() {
       3000,
     );
 
-  const clientUrl =
-    configService.get<string>(
-      'CLIENT_URL',
-      'http://localhost:5173',
-    );
-
   /*
    * Security headers
    */
@@ -40,8 +34,14 @@ async function bootstrap() {
   /*
    * React frontend
    */
+  const clientUrl = configService.getOrThrow<string>('CLIENT_URL');
+
   app.enableCors({
-    origin: clientUrl,
+    origin: [
+      'http://localhost:5173',
+      clientUrl,
+    ],
+    credentials: true,
   });
 
   /*

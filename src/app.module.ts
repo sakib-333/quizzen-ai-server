@@ -11,46 +11,20 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { ConvexModule } from './database/convex/convex.module';
 
 const envSchema = z.object({
-  NODE_ENV: z
-    .enum([
-      'development',
-      'production',
-      'test',
-    ])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
-  PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(3000),
+  PORT: z.coerce.number().int().positive().default(3000),
 
-  CLIENT_URL: z
-    .string()
-    .url()
-    .default(
-      'http://localhost:5173',
-    ),
+  CLIENT_URL: z.string().url(),
 
-  GEMINI_API_KEY: z
-    .string()
-    .min(1),
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().default('gemini-3.1-flash-lite'),
 
-  GEMINI_MODEL: z
-    .string()
-    .default('gemini-3.1-flash-lite'),
+  CONVEX_URL: z.string().url(),
 
-  CONVEX_URL: z
-    .string()
-    .min(1),
-
-  CONVEX_DEPLOYMENT: z
-    .string()
-    .min(1),
-  
-    CONVEX_SITE_URL: z
-    .string()
-    .min(1),
+  FIREBASE_PROJECT_ID: z.string().min(1),
+  FIREBASE_CLIENT_EMAIL: z.string().email(),
+  FIREBASE_PRIVATE_KEY: z.string().min(1),
 });
 
 @Module({
