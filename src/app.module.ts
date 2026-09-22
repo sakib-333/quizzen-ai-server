@@ -32,7 +32,8 @@ const envSchema = z.object({
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      validationSchema: envSchema,
+      envFilePath: ['.env.local', '.env'],
+      validate: (config) => envSchema.parse(config),
     }),
     ConvexModule,
     AuthModule,
