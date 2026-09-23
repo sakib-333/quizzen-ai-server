@@ -3,8 +3,9 @@
 ## Setup
 
 Install dependencies, copy `.env.example` to `.env`, and provide the required
-Gemini, Convex, and Firebase values. Firebase Admin expects its service-account
-JSON at `secrets/firebase-service-account.json`; never commit that file.
+Gemini, Convex, and Firebase values. Firebase Admin reads the project ID,
+client email, and private key from environment variables; never commit real
+service-account credentials.
 
 Generate and synchronize the Convex API and schema during local development:
 
@@ -35,6 +36,12 @@ npm run convex:deploy
 npm run build
 npm run start:prod
 ```
+
+For Vercel, configure `CLIENT_URL`, `GEMINI_API_KEY`, `CONVEX_URL`,
+`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in
+the Production environment. Store `FIREBASE_PRIVATE_KEY` on one line with
+newlines escaped as `\n`. Deploy from the committed `package-lock.json` and,
+after dependency changes, redeploy without the previous build cache.
 
 Authenticated requests must send a Firebase ID token as
 `Authorization: Bearer <token>`. A successful authenticated quiz-generation
