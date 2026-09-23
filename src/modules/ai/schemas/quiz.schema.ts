@@ -1,17 +1,34 @@
 import { z } from 'zod';
 
+const optionIdSchema = z.enum(['A', 'B', 'C', 'D']);
+
 const optionSchema = z.object({
-  id: z.enum(['A', 'B', 'C', 'D']),
+  id: optionIdSchema,
   text: z.string().min(1),
 });
 
-const questionSchema = z.object({
-  id: z.string().min(1),
-  question: z.string().min(1),
-  options: z.array(optionSchema).length(4),
-  correctOptionId: z.enum(['A', 'B', 'C', 'D']),
-  explanation: z.string().min(1),
-});
+const questionSchema = z
+  .object({
+    id: z.string().min(1),
+    question: z.string().min(1),
+    options: z.array(optionSchema).length(4),
+    correctOptionId: optionIdSchema,
+    explanation: z.string().min(1),
+  })
+  .superRefine((question, ctx) => {
+    const ids = new Set(question.options.map((option) => option.id));
+
+    if (
+      ids.size !== 4 ||
+      !['A', 'B', 'C', 'D'].every((id) => ids.has(id as 'A' | 'B' | 'C' | 'D'))
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['options'],
+        message: 'Options must contain exactly A, B, C and D.',
+      });
+    }
+  });
 
 export const createQuizValidationSchema = (questionCount: number) =>
   z.object({
@@ -19,7 +36,9 @@ export const createQuizValidationSchema = (questionCount: number) =>
     questions: z.array(questionSchema).length(questionCount),
   });
 
-export type GeneratedQuiz = z.infer<ReturnType<typeof createQuizValidationSchema>>;
+export type GeneratedQuiz = z.infer<
+  ReturnType<typeof createQuizValidationSchema>
+>;
 
 export const createQuizJsonSchema = (questionCount: number) => ({
   type: 'object',
@@ -52,13 +71,11 @@ export const createQuizJsonSchema = (questionCount: number) => ({
 
             items: {
               type: 'object',
-
               properties: {
                 id: {
                   type: 'string',
                   enum: ['A', 'B', 'C', 'D'],
                 },
-
                 text: {
                   type: 'string',
                 },
@@ -94,4 +111,4 @@ export const createQuizJsonSchema = (questionCount: number) => ({
 
   required: ['title', 'questions'],
   additionalProperties: false,
-});
+} as const);

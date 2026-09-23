@@ -17,8 +17,8 @@ const envSchema = z.object({
 
   CLIENT_URL: z.string().url(),
 
-  GEMINI_API_KEY: z.string().min(1),
-  GEMINI_MODEL: z.string().default('gemini-3.1-flash-lite'),
+  GROQ_API_KEY: z.string().min(1),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-20b'),
 
   CONVEX_URL: z.string().url(),
 
